@@ -287,7 +287,9 @@ class SyncPullEndpoint(APIView):
                 'date': s.date.isoformat(),
                 'device_id': s.device_id,
                 'sync_status': s.sync_status,
-                'updated_at': s.updated_at.isoformat()
+                'updated_at': s.updated_at.isoformat(),
+                'is_deleted': s.is_deleted,
+                'deleted_at': s.deleted_at.isoformat() if s.deleted_at else None
             })
 
         # ── TRANSACTIONS
@@ -307,7 +309,9 @@ class SyncPullEndpoint(APIView):
                 'date': t.date.isoformat(),
                 'device_id': t.device_id,
                 'sync_status': t.sync_status,
-                'updated_at': t.updated_at.isoformat()
+                'updated_at': t.updated_at.isoformat(),
+                'is_deleted': t.is_deleted,
+                'deleted_at': t.deleted_at.isoformat() if t.deleted_at else None
             })
 
         # ── STOCK LOGS

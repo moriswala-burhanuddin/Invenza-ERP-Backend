@@ -260,6 +260,12 @@ class TaxSlab(SyncableModel):
     name        = models.CharField(max_length=100)
     percentage  = models.DecimalField(max_digits=5, decimal_places=2)
 
+    class Meta:
+        unique_together = ('company', 'name')
+        indexes = [
+            models.Index(fields=['company', 'store']),
+        ]
+
     def __str__(self):
         return f"{self.name} ({self.percentage}%)"
 
@@ -352,6 +358,7 @@ class Transaction(SyncableModel):
     store            = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='transactions')
     account          = models.ForeignKey(Account, on_delete=models.CASCADE)
     customer         = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True)
+    expense_category = models.ForeignKey('ExpenseCategory', on_delete=models.SET_NULL, null=True, blank=True)
     
     type             = models.CharField(max_length=50) # cash_in, cash_out, expense
     amount           = models.DecimalField(max_digits=15, decimal_places=2)
@@ -579,7 +586,7 @@ class PurchaseOrder(SyncableModel):
     id            = models.CharField(max_length=50, primary_key=True, default=generate_po_id)
     company       = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='purchase_orders')
     store         = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='purchase_orders')
-    po_number     = models.CharField(max_length=100, unique=True)
+    po_number     = models.CharField(max_length=100)
     supplier      = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='purchase_orders')
     
     total_amount  = models.DecimalField(max_digits=15, decimal_places=2)
@@ -1065,7 +1072,7 @@ class GiftCard(SyncableModel):
     company          = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
     store            = models.ForeignKey(Store, on_delete=models.CASCADE)
     customer         = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True)
-    card_number      = models.CharField(max_length=100, unique=True)
+    card_number      = models.CharField(max_length=100)
     value            = models.DecimalField(max_digits=15, decimal_places=2)
     balance          = models.DecimalField(max_digits=15, decimal_places=2)
     is_active        = models.BooleanField(default=True)

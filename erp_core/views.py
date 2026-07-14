@@ -247,6 +247,7 @@ class SyncPullEndpoint(APIView):
         # ── TAX SLABS
         tax_slabs_data = list(get_qs(TaxSlab).values(
             'id', 'company_id', 'store_id', 'name', 'percentage',
+            'device_id', 'is_deleted', 'deleted_at',
             'updated_at', 'sync_status'
         ))
 
@@ -299,6 +300,7 @@ class SyncPullEndpoint(APIView):
                 'store_id': t.store_id,
                 'account_id': t.account_id,
                 'customer_id': t.customer_id,
+                'expense_category_id': t.expense_category_id,
                 'type': t.type,
                 'amount': float(t.amount),
                 'description': t.description,
@@ -367,6 +369,13 @@ class SyncPullEndpoint(APIView):
         supplier_transaction_data = safe_values(SupplierTransaction)
         candidate_data = safe_values(Candidate)
         performance_review_data = safe_values(PerformanceReview)
+
+        # Fix: Add supplier name to purchase orders and purchases for local SQLite NOT NULL constraint
+        supplier_map = {s['id']: s.get('company_name', 'Unknown') for s in suppliers_data}
+        for po in pos_data:
+            po['supplier'] = supplier_map.get(po.get('supplier_id'), 'Unknown')
+        for pur in purchase_data:
+            pur['supplier'] = supplier_map.get(pur.get('supplier_id'), 'Unknown')
         gift_card_data = safe_values(GiftCard)
 
         return Response({
@@ -786,12 +795,21 @@ class SyncPushEndpoint(APIView):
             for row in tax_payload:
                 obj_id = row.get('id')
                 try:
+                    store_id = row.get('store_id')
+                    if not store_id:
+                        first_store = Store.objects.filter(company=company).first()
+                        if first_store:
+                            store_id = first_store.id
+                            
                     TaxSlab.objects.update_or_create(
                         id=obj_id, company=company,
                         defaults={
-                            'store_id':   row.get('store_id'),
+                            'store_id':   store_id,
                             'name':       row.get('name'),
                             'percentage': to_decimal(row.get('percentage')),
+                            'device_id':  row.get('device_id'),
+                            'is_deleted': bool(row.get('is_deleted', 0)),
+                            'deleted_at': row.get('deleted_at'),
                             'sync_status': 1,
                         }
                     )
@@ -1335,7 +1353,7 @@ class SyncPushEndpoint(APIView):
                     errors.append({"table": "cheques", "id": obj_id, "message": str(e)})
 
             # ── PUSH EXPENSECATEGORY ──────────────────────────────────────
-            expense_category_payload = payload.get('expense_categorys', [])
+            expense_category_payload = payload.get('expense_categories', [])
             for row in expense_category_payload:
                 obj_id = row.get('id')
                 try:

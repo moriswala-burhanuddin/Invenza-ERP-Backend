@@ -581,6 +581,15 @@ class SyncPushEndpoint(APIView):
                         defaults=user_defaults
                     )
                     
+                    incoming_store = row.get('store_id')
+                    if incoming_store:
+                        try:
+                            store_obj = Store.objects.get(id=incoming_store, company=company)
+                            erp_user.stores.add(store_obj)
+                        except Store.DoesNotExist:
+                            pass
+
+                    
                     # ── BRIDGE: SYNC TO DJANGO AUTH ───────────────────────────
                     if not erp_user.django_user:
                         from django.contrib.auth.models import User as DjangoUser

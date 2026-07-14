@@ -1248,6 +1248,8 @@ class SyncPushEndpoint(APIView):
                             'original_currency': row.get('original_currency'),
                             'amount_paid':    to_decimal(row.get('amount_paid')),
                             'amount_due':     to_decimal(row.get('amount_due')),
+                            'is_deleted':     bool(row.get('is_deleted', 0)),
+                            'deleted_at':     row.get('deleted_at'),
                             'sync_status':    1,
                         }
                     )
@@ -1319,6 +1321,8 @@ class SyncPushEndpoint(APIView):
                             'original_amount': to_decimal(row.get('original_amount')),
                             'original_currency': row.get('original_currency'),
                             'date': row.get('date'),
+                            'is_deleted': bool(row.get('is_deleted', 0)),
+                            'deleted_at': row.get('deleted_at'),
                             'sync_status': 1,
                         }
                     )

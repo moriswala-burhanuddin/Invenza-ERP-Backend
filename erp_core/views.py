@@ -1055,6 +1055,7 @@ class SyncPushEndpoint(APIView):
                                 'salary':      to_decimal(row.get('salary')),
                                 'joining_date':to_date(row.get('joining_date')),
                                 'documents':    row.get('documents'),
+                                'is_deleted':   bool(row.get('is_deleted', 0)),
                                 'sync_status': 1,
                             }
                         )

@@ -17,8 +17,13 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load environment variables from the root .env file
-load_dotenv(os.path.join(BASE_DIR.parent.parent, '.env'))
+# Load environment variables from the root .env file (local monorepo) or current dir (VPS)
+env_path_vps = os.path.join(BASE_DIR, '.env')
+env_path_local = os.path.join(BASE_DIR.parent.parent, '.env')
+if os.path.exists(env_path_vps):
+    load_dotenv(env_path_vps)
+else:
+    load_dotenv(env_path_local)
 
 
 # Quick-start development settings - unsuitable for production

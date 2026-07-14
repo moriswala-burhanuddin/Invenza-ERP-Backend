@@ -1520,6 +1520,7 @@ class SyncPushEndpoint(APIView):
                             'is_required': row.get('is_required'),
                             'show_on_receipt': row.get('show_on_receipt'),
                             'target_type': row.get('target_type'),
+                            'is_deleted': bool(row.get('is_deleted', 0)),
                             'sync_status': 1,
                         }
                     )
@@ -1595,6 +1596,7 @@ class SyncPushEndpoint(APIView):
                             'show_on_receipt': row.get('show_on_receipt'),
                             'hide_label': row.get('hide_label'),
                             'options': row.get('options'),
+                            'is_deleted': bool(row.get('is_deleted', 0)),
                             'sync_status': 1,
                         }
                     )

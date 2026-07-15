@@ -595,6 +595,10 @@ class SyncPushEndpoint(APIView):
                         except Store.DoesNotExist:
                             pass
 
+                    # Skip Django auth bridge for deleted users
+                    if erp_user.is_deleted:
+                        synced_ids.setdefault('users', []).append(obj_id)
+                        continue
                     
                     # ── BRIDGE: SYNC TO DJANGO AUTH ───────────────────────────
                     if not erp_user.django_user:

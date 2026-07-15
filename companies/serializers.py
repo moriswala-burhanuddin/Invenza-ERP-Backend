@@ -145,7 +145,8 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
         # a) Have this email/username globally (primary accounts)
         # b) Are linked to an ERPUser who has this email/username in ANY company (secondary/legacy IDs)
         erp_django_uids = ERPUser.objects.filter(
-            Q(email__iexact=identifier) | Q(username__iexact=identifier)
+            Q(email__iexact=identifier) | Q(username__iexact=identifier),
+            is_deleted=False
         ).values_list('django_user_id', flat=True)
         
         potential_users = User.objects.filter(
@@ -208,7 +209,7 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
             from erp_core.models import ERPUser
             import bcrypt
             
-            erp_profile = ERPUser.objects.filter(django_user=user).first()
+            erp_profile = ERPUser.objects.filter(django_user=user, is_deleted=False).first()
             if erp_profile and erp_profile.password:
                 try:
                     if bcrypt.checkpw(password.encode('utf-8'), erp_profile.password.encode('utf-8')):
@@ -248,7 +249,7 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
             # Scenario B: User is a Staff/Employee (linked via ERPUser)
             if not company:
                 from erp_core.models import ERPUser
-                erp_profile = ERPUser.objects.filter(django_user=authenticated_user).first()
+                erp_profile = ERPUser.objects.filter(django_user=authenticated_user, is_deleted=False).first()
                 if erp_profile:
                     company = erp_profile.company
                     print(f"[AUTH_DEBUG] Staff Account identified for {identifier}. Company: {company.name}")

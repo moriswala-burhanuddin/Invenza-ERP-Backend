@@ -156,6 +156,12 @@ class SyncPullEndpoint(APIView):
                         qs = qs.filter(updated_at__gt=dt)
                 except Exception:
                     pass  # If parsing fails, return all records
+            else:
+                # Full sync (fresh login): skip deleted records — client starts empty
+                # For incremental syncs (last_sync exists), we still send deleted records
+                # so the client can mark them as deleted locally.
+                if hasattr(model, 'is_deleted'):
+                    qs = qs.filter(is_deleted=False)
             return qs
 
         # ── STORES ──────────────────────────────────────────────────────────
@@ -747,23 +753,6 @@ class SyncPushEndpoint(APIView):
                     print(f"[SYNC] Account Push Error ({obj_id}): {str(e)}")
                     errors.append({"table": "accounts", "id": obj_id, "message": str(e)})
 
-
-            # ── PUSH CATEGORIES ───────────────────────────────────────────
-            cat_payload = payload.get('categories', [])
-            for row in cat_payload:
-                obj_id = row.get('id')
-                Category.objects.update_or_create(
-                    id=obj_id,
-                    company=company,
-                    defaults={
-                        'store_id':    row.get('store_id'),
-                        'name':        row.get('name'),
-                        'description': row.get('description', ''),
-                        'device_id':   row.get('device_id'),
-                        'sync_status': 1,
-                    }
-                )
-                synced_ids.setdefault('categories', []).append(obj_id)
 
             # ── PUSH PRODUCTS ─────────────────────────────────────────────
             prod_payload = payload.get('products', [])
@@ -1381,6 +1370,8 @@ class SyncPushEndpoint(APIView):
                             'name': row.get('name'),
                             'parent_id': row.get('parent_id'),
                             'sync_status': 1,
+                            'is_deleted': bool(row.get('is_deleted', 0)),
+                            'deleted_at': row.get('deleted_at'),
                         }
                     )
                     synced_ids.setdefault('expense_categories', []).append(obj_id)

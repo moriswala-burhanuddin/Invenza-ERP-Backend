@@ -595,8 +595,17 @@ class SyncPushEndpoint(APIView):
                         except Store.DoesNotExist:
                             pass
 
-                    # Skip Django auth bridge for deleted users
+                    # Skip Django auth bridge for deleted users, but ensure they are deactivated
                     if erp_user.is_deleted:
+                        if erp_user.django_user:
+                            erp_user.django_user.is_active = False
+                            # Prefix email/username to avoid unique constraints if they sign up again
+                            if not erp_user.django_user.email.startswith('__DEL__'):
+                                erp_user.django_user.email = f"__DEL__{erp_user.django_user.email}"
+                            if not erp_user.django_user.username.startswith('__DEL__'):
+                                erp_user.django_user.username = f"__DEL__{erp_user.django_user.username}"
+                            erp_user.django_user.save()
+                            
                         synced_ids.setdefault('users', []).append(obj_id)
                         continue
                     
@@ -1048,7 +1057,7 @@ class SyncPushEndpoint(APIView):
                                 'salary':      to_decimal(row.get('salary')),
                                 'joining_date':to_date(row.get('joining_date')),
                                 'documents':    row.get('documents'),
-                                'is_deleted':   bool(row.get('is_deleted', 0)),
+                                'is_deleted':   str(row.get('is_deleted', '0')).lower() in ['1', 'true', 't', 'yes', 'y'],
                                 'sync_status': 1,
                             }
                         )

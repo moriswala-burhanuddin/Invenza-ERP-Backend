@@ -139,6 +139,12 @@ class SyncPullEndpoint(APIView):
                 {"error": "No company found for this user. Please complete your company setup."},
                 status=status.HTTP_403_FORBIDDEN
             )
+            
+        if company.subscription_status == 'expired':
+            return Response(
+                {"error": "SUBSCRIPTION_EXPIRED", "detail": "Your subscription has expired. Please renew to continue syncing data."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         last_sync = request.data.get('last_sync')  # ISO 8601 datetime string or None
 
@@ -464,6 +470,12 @@ class SyncPushEndpoint(APIView):
         if not company:
             return Response(
                 {"error": "No company found for this user."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if company.subscription_status == 'expired':
+            return Response(
+                {"error": "SUBSCRIPTION_EXPIRED", "detail": "Your subscription has expired. Please renew to continue syncing data."},
                 status=status.HTTP_403_FORBIDDEN
             )
 

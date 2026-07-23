@@ -22,6 +22,8 @@ class Company(models.Model):
     # SaaS & Feature Flags
     is_ai_enabled = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
+    trial_reminder_sent = models.BooleanField(default=False)
+    subscription_reminder_sent = models.BooleanField(default=False)
     subscription_status = models.CharField(
         max_length=50, 
         choices=[('trial', 'Trial'), ('active', 'Active'), ('expired', 'Expired')],

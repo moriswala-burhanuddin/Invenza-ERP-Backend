@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f4f4f5; margin: 0; padding: 40px 20px; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center; }
+        .logo { width: 40px; height: 40px; background: linear-gradient(135deg, #ef4444, #f97316); border-radius: 8px; margin: 0 auto 24px auto; transform: rotate(45deg); display: flex; align-items: center; justify-content: center; }
+        .logo-inner { width: 20px; height: 20px; background: white; border-radius: 4px; transform: rotate(-45deg); }
+        h1 { color: #111111; font-size: 24px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.5px; }
+        p { color: #52525b; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+        .highlight { font-weight: 600; color: #111111; }
+        .btn { display: inline-block; background-color: #111111; color: #ffffff; padding: 14px 32px; border-radius: 99px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 0.5px; margin-bottom: 32px; text-transform: uppercase; }
+        .footer { font-size: 12px; color: #a1a1aa; border-top: 1px solid #f4f4f5; padding-top: 24px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo"><div class="logo-inner"></div></div>
+        <h1>Your Trial Has Expired</h1>
+        <p>Hello <span class="highlight">{{ company.name }}</span>,</p>
+        <p>Your 7-day free trial for Invenza ERP has officially ended. Cloud synchronization has been temporarily paused, but your local desktop data remains completely safe!</p>
+        <p>To restore cloud sync and continue working seamlessly, please select a plan.</p>
+        <a href="https://invenza-erp.cloud/portal/pricing" class="btn">View Pricing</a>
+        <p class="footer">If you have any questions, our support team is always here to help.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Welcome to Invenza</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #F5F5F7; margin: 0; padding: 40px 0; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 24px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        h1 { color: #1D1D1F; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-top: 0; margin-bottom: 16px; }
+        p { color: #86868B; font-size: 16px; line-height: 1.5; margin-top: 0; margin-bottom: 24px; }
+        .creds-box { background-color: #F5F5F7; border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+        .creds-box p { margin: 8px 0; color: #1D1D1F; font-weight: 500; }
+        .creds-box span { color: #86868B; font-weight: 400; display: inline-block; width: 120px; }
+        .footer { text-align: center; color: #86868B; font-size: 12px; margin-top: 40px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Invenza ERP!</h1>
+        <p>Hi {{ user.username }},</p>
+        <p>Your email has been successfully verified! Your workspace for <strong>{{ company.name }}</strong> is now ready.</p>
+        
+        <p>To access the Invenza Desktop App, please use the following temporary credentials:</p>
+        
+        <div class="creds-box">
+            <p><span>Login ID:</span> {{ user.email }}</p>
+            <p><span>Temporary Pass:</span> {{ temp_erp_pass }}</p>
+        </div>
+        
+        <p>You can change this password at any time from your settings portal.</p>
+        <p>Welcome aboard!<br>The Invenza Team</p>
+    </div>
+    <div class="footer">
+        &copy; 2026 Sysfotech IT Services. All rights reserved.
+    </div>
+</body>
+</html>

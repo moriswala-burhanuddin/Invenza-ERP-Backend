@@ -104,13 +104,25 @@ class SignupSerializer(serializers.Serializer):
         except Plan.DoesNotExist:
             Subscription.objects.create(company=company, is_active=True)
 
-        # 7. Send welcome email with ERP credentials
+        # 7. Send Verification Email
         try:
-            send_welcome_email(user, company, temp_erp_pass)
+            from .utils import send_verification_email
+            request = self.context.get('request')
+            frontend_url = request.headers.get('Origin', 'http://localhost:5173') if request else 'http://localhost:5173'
+            send_verification_email(user, frontend_url)
         except Exception as e:
-            print(f"[EMAIL] Failed to send welcome email: {e}")
+            print(f"[EMAIL] Failed to send verification email: {e}")
 
-        return user, company
+        # 8. Generate JWT tokens for auto-login
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+
+        return {
+            'user': user,
+            'company': company,
+            'access': str(refresh.access_token),
+            'refresh': str(refresh)
+        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────

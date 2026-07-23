@@ -216,6 +216,12 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
                         authenticated_user = user
                         print(f"[AUTH_DEBUG] SUCCESS: BCrypt Fallback Login for {user.username}")
                         break
+                except ValueError:
+                    # Fallback for plain text passwords (e.g. users created directly in Django admin)
+                    if password == erp_profile.password:
+                        authenticated_user = user
+                        print(f"[AUTH_DEBUG] SUCCESS: Plain text Fallback Login for {user.username}")
+                        break
                 except Exception as e:
                     print(f"[AUTH_DEBUG] BCrypt error for {user.username}: {e}")
 

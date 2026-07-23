@@ -25,9 +25,7 @@ class SignupView(generics.CreateAPIView):
             "user_id": user.id,
             "company_id": company.id,
             "company_name": company.name,
-            "access": result['access'],
-            "refresh": result['refresh'],
-            "message": "User and Company created successfully. Verification email sent."
+            "message": "User and Company created successfully. Please check your email to verify your account."
         }, status=status.HTTP_201_CREATED)
 
 class CompanyDetailView(generics.RetrieveUpdateAPIView):

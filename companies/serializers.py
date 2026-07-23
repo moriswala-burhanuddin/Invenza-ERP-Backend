@@ -113,15 +113,12 @@ class SignupSerializer(serializers.Serializer):
         except Exception as e:
             print(f"[EMAIL] Failed to send verification email: {e}")
 
-        # 8. Generate JWT tokens for auto-login
-        from rest_framework_simplejwt.tokens import RefreshToken
-        refresh = RefreshToken.for_user(user)
+        # 8. Generate JWT tokens for auto-login (REMOVED as per new requirement)
+        # We no longer auto-login to force email verification first.
 
         return {
             'user': user,
             'company': company,
-            'access': str(refresh.access_token),
-            'refresh': str(refresh)
         }
 
 
@@ -275,6 +272,15 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
         if not company:
             print(f"[AUTH_DEBUG] NO COMPANY FOUND for user {authenticated_user.email}")
             raise serializers.ValidationError({"detail": "No company associated with this account."})
+
+        # 4.5. Check Email Verification (Exempt legacy users)
+        import datetime
+        from django.utils.timezone import make_aware
+        # Users created before this date are grandfathered in without verification
+        feature_launch_date = make_aware(datetime.datetime(2026, 7, 23))
+        
+        if not company.is_email_verified and company.created_at >= feature_launch_date:
+            raise serializers.ValidationError({"detail": "Please check your email and verify your account before logging in."})
 
         # 5. Generate SimpleJWT tokens manually
         refresh = RefreshToken.for_user(authenticated_user)

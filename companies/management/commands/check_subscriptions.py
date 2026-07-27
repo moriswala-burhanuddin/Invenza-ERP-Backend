@@ -16,69 +16,64 @@ class Command(BaseCommand):
         for company in companies:
             owner_email = company.owner.email
             
-            # --- TRIAL LOGIC ---
+            # --- TRIAL EXPIRATION CHECK ---
             if company.subscription_status == 'trial':
                 days_left = company.trial_days_left
                 
                 # 1 Day Left Reminder
-                if days_left == 1 and not company.trial_reminder_sent:
+                if days_left == 1 and not company.reminder_email_sent:
                     self.send_reminder_email(
-                        subject=f"Your Invenza Trial Ends Tomorrow",
+                        subject="Your Invenza Trial Ends Tomorrow",
                         template_name='emails/trial_reminder.html',
                         context={'company': company, 'days_left': days_left},
                         recipient_list=[owner_email]
                     )
-                    company.trial_reminder_sent = True
-                    company.save()
-                    self.stdout.write(self.style.SUCCESS(f"Sent trial reminder to {owner_email}"))
-
-                # Trial Expired
-                elif days_left <= 0:
-                    company.subscription_status = 'expired'
-                    company.trial_reminder_sent = False # reset
-                    company.save()
-                    
+                    company.reminder_email_sent = True
+                    company.save(update_fields=['reminder_email_sent'])
+                    self.stdout.write(self.style.SUCCESS(f"Sent trial reminder email to {owner_email}"))
+                
+                # Trial Expired and email not sent yet
+                elif days_left <= 0 and not company.expiry_email_sent:
                     self.send_reminder_email(
-                        subject=f"Your Invenza Trial Has Expired",
+                        subject="Your Invenza Trial Has Expired",
                         template_name='emails/trial_expired.html',
                         context={'company': company},
                         recipient_list=[owner_email]
                     )
-                    self.stdout.write(self.style.SUCCESS(f"Expired trial for {owner_email}"))
+                    company.expiry_email_sent = True
+                    company.save(update_fields=['expiry_email_sent'])
+                    self.stdout.write(self.style.SUCCESS(f"Sent trial expiry email to {owner_email}"))
 
-
-            # --- ACTIVE LOGIC ---
+            # --- ACTIVE SUBSCRIPTION EXPIRATION CHECK ---
             elif company.subscription_status == 'active':
                 if not company.expiry_date:
                     continue # Lifetime or unexpiring plan
                     
                 days_left = (company.expiry_date - now).days
                 
-                # 1 Day Left Reminder
-                if days_left == 1 and not company.subscription_reminder_sent:
+                # 6 Days Left Reminder
+                if days_left == 6 and not company.reminder_email_sent:
                     self.send_reminder_email(
-                        subject=f"Your Invenza Subscription Renews Tomorrow",
+                        subject="Your Invenza Subscription Renews Soon",
                         template_name='emails/subscription_reminder.html',
                         context={'company': company, 'days_left': days_left},
                         recipient_list=[owner_email]
                     )
-                    company.subscription_reminder_sent = True
-                    company.save()
-                    self.stdout.write(self.style.SUCCESS(f"Sent subscription reminder to {owner_email}"))
-                    
-                # Subscription Expired
-                elif days_left < 0:
-                    company.subscription_status = 'expired'
-                    company.subscription_reminder_sent = False # reset
-                    company.save()
-                    
+                    company.reminder_email_sent = True
+                    company.save(update_fields=['reminder_email_sent'])
+                    self.stdout.write(self.style.SUCCESS(f"Sent subscription reminder email to {owner_email}"))
+
+                # Subscription Expired and email not sent yet
+                elif days_left < 0 and not company.expiry_email_sent:
                     self.send_reminder_email(
-                        subject=f"Your Invenza Subscription Has Expired",
+                        subject="Your Invenza Subscription Has Expired",
                         template_name='emails/subscription_expired.html',
                         context={'company': company},
                         recipient_list=[owner_email]
                     )
-                    self.stdout.write(self.style.SUCCESS(f"Expired subscription for {owner_email}"))
+                    company.expiry_email_sent = True
+                    company.save(update_fields=['expiry_email_sent'])
+                    self.stdout.write(self.style.SUCCESS(f"Sent subscription expiry email to {owner_email}"))
 
         self.stdout.write(self.style.SUCCESS('Successfully completed subscription check.'))
 

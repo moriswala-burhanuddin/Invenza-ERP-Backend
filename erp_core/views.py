@@ -593,6 +593,12 @@ class SyncPushEndpoint(APIView):
                         })
                         continue
 
+                    # Check if password changed to invalidate old django password
+                    password_changed = False
+                    if existing_user and incoming_password and incoming_password != existing_user.password:
+                        password_changed = True
+                        user_defaults['previous_password'] = existing_user.password
+
                     erp_user, _ = ERPUser.objects.update_or_create(
                         id=obj_id,
                         company=company,   # TENANT GUARD
@@ -664,6 +670,20 @@ class SyncPushEndpoint(APIView):
                         d_user = erp_user.django_user
                         d_user.first_name = erp_user.first_name or ''
                         d_user.last_name = erp_user.last_name or ''
+                        
+                        # Invalidate old Django password if ERP password was changed
+                        if password_changed:
+                            import uuid
+                            d_user.set_password(uuid.uuid4().hex)
+                            print(f"[SYNC] Invalidating old Django password for {erp_user.email}")
+                            
+                            try:
+                                from companies.utils import send_password_changed_email
+                                send_password_changed_email(d_user)
+                                print(f"[SYNC] Sent password changed email to {erp_user.email}")
+                            except Exception as email_err:
+                                print(f"[SYNC] Failed to send password changed email: {str(email_err)}")
+                            
                         d_user.save()
 
                     synced_ids.setdefault('users', []).append(obj_id)
@@ -784,6 +804,17 @@ class SyncPushEndpoint(APIView):
             for row in prod_payload:
                 obj_id = row.get('id')
                 try:
+                    # 🔒 TENANT GUARD: only write if the store belongs to this company
+                    if row.get('store_id') and not Store.objects.filter(id=row.get('store_id'), company=company).exists():
+                        print(f"[SYNC] Product {obj_id} skipped: store {row.get('store_id')} not in company")
+                        continue
+                    
+                    # 🔒 PKEY COLLISION GUARD
+                    existing_product = Product.objects.filter(id=obj_id).first()
+                    if existing_product and existing_product.company != company:
+                        print(f"[SYNC] Product Collision: {obj_id} belongs to another company!")
+                        continue
+
                     Product.objects.update_or_create(
                         id=obj_id,
                         company=company,
@@ -850,6 +881,23 @@ class SyncPushEndpoint(APIView):
             for row in sales_payload:
                 obj_id = row.get('id')
                 try:
+                    # ?? TENANT GUARD
+                    if row.get('store_id') and not Store.objects.filter(id=row.get('store_id'), company=company).exists():
+                        print(f"[SYNC] Sale {obj_id} skipped: store not in company")
+                        continue
+                    if row.get('customer_id') and not Customer.objects.filter(id=row.get('customer_id'), company=company).exists():
+                        print(f"[SYNC] Sale {obj_id} skipped: customer not in company")
+                        continue
+                    if row.get('account_id') and not Account.objects.filter(id=row.get('account_id'), company=company).exists():
+                        print(f"[SYNC] Sale {obj_id} skipped: account not in company")
+                        continue
+
+                    # ?? PKEY GUARD
+                    existing_sale = Sale.objects.filter(id=obj_id).first()
+                    if existing_sale and existing_sale.company_id != company.id:
+                        print(f"[SYNC] Sale Collision: {obj_id} belongs to another company!")
+                        continue
+
                     Sale.objects.update_or_create(
                         id=obj_id,
                         company=company,
@@ -887,6 +935,19 @@ class SyncPushEndpoint(APIView):
             for row in trans_payload:
                 obj_id = row.get('id')
                 try:
+                    # ?? TENANT GUARD
+                    if row.get('store_id') and not Store.objects.filter(id=row.get('store_id'), company=company).exists():
+                        continue
+                    if row.get('customer_id') and not Customer.objects.filter(id=row.get('customer_id'), company=company).exists():
+                        continue
+                    if row.get('account_id') and not Account.objects.filter(id=row.get('account_id'), company=company).exists():
+                        continue
+
+                    # ?? PKEY GUARD
+                    existing_trans = Transaction.objects.filter(id=obj_id).first()
+                    if existing_trans and existing_trans.company_id != company.id:
+                        continue
+
                     Transaction.objects.update_or_create(
                         id=obj_id,
                         company=company,
@@ -1332,6 +1393,17 @@ class SyncPushEndpoint(APIView):
             for row in purchase_payload:
                 obj_id = row.get('id')
                 try:
+                    # ?? TENANT GUARD
+                    if row.get('store_id') and not Store.objects.filter(id=row.get('store_id'), company=company).exists():
+                        continue
+                    if row.get('supplier_id') and not Supplier.objects.filter(id=row.get('supplier_id'), company=company).exists():
+                        continue
+                    
+                    # ?? PKEY GUARD
+                    existing_p = Purchase.objects.filter(id=obj_id).first()
+                    if existing_p and existing_p.company_id != company.id:
+                        continue
+
                     Purchase.objects.update_or_create(
                         id=obj_id, company=company,
                         defaults={

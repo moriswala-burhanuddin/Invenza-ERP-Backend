@@ -44,11 +44,10 @@ def send_verification_email(user, frontend_url):
         to_email=user.email
     )
 
-def send_welcome_email(user, company, temp_erp_pass):
+def send_welcome_email(user, company):
     context = {
         'user': user,
-        'company': company,
-        'temp_erp_pass': temp_erp_pass
+        'company': company
     }
     send_html_email(
         subject="Welcome to Invenza!",

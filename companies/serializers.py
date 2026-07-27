@@ -34,7 +34,6 @@ class SignupSerializer(serializers.Serializer):
     username = serializers.CharField()
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
-    company_name = serializers.CharField()
 
     def validate_username(self, value):
         if User.objects.filter(username=value).exists():
@@ -46,14 +45,7 @@ class SignupSerializer(serializers.Serializer):
             raise serializers.ValidationError("A user with this email already exists.")
         return value
 
-    def validate_company_name(self, value):
-        if Company.objects.filter(name__iexact=value).exists():
-            raise serializers.ValidationError("A company with this name already exists.")
-        return value
-
     def create(self, validated_data):
-        from erp_core.models import Store, ERPUser
-
         # 1. Create Django Website User
         user = User.objects.create_user(
             username=validated_data['username'],
@@ -61,50 +53,7 @@ class SignupSerializer(serializers.Serializer):
             password=validated_data['password']
         )
 
-        # 2. Generate a secure temporary password for the Electron ERP
-        temp_erp_pass = "Invenza" + "".join(random.choices(string.digits, k=4)) + "!"
-
-        # 3. Create the Company (Tenant)
-        company = Company.objects.create(
-            name=validated_data['company_name'],
-            slug=validated_data['company_name'].lower().replace(' ', '-'),
-            owner=user,
-            erp_password=temp_erp_pass,
-            subscription_status='trial'
-        )
-
-        # 4. Create a default Store (required for Electron ERP to boot)
-        default_store = Store.objects.create(
-            company=company,
-            name=validated_data['company_name'],
-            branch='Main Branch',
-        )
-
-        # 5. Create the Admin ERPUser (the owner's desktop ERP login)
-        name_parts = validated_data['username'].split(' ', 1)
-        erp_admin = ERPUser.objects.create(
-            company=company,
-            django_user=user,
-            name=validated_data['username'],
-            email=validated_data['email'],
-            username=validated_data['username'],
-            password=make_password(temp_erp_pass),  # Hashed — used in Electron local login
-            role='super_admin', # Primary user is always super_admin
-            first_name=name_parts[0],
-            last_name=name_parts[1] if len(name_parts) > 1 else '',
-            is_active=True,
-            is_staff=True,
-        )
-        erp_admin.stores.set([default_store])
-
-        # 6. Initialize a trial subscription
-        try:
-            trial_plan = Plan.objects.get(name__icontains='Trial')
-            Subscription.objects.create(company=company, plan=trial_plan, is_active=True)
-        except Plan.DoesNotExist:
-            Subscription.objects.create(company=company, is_active=True)
-
-        # 7. Send Verification Email
+        # 2. Send Verification Email
         try:
             from .utils import send_verification_email
             request = self.context.get('request')
@@ -113,13 +62,71 @@ class SignupSerializer(serializers.Serializer):
         except Exception as e:
             print(f"[EMAIL] Failed to send verification email: {e}")
 
-        # 8. Generate JWT tokens for auto-login (REMOVED as per new requirement)
-        # We no longer auto-login to force email verification first.
-
         return {
             'user': user,
+        }
+
+class CompanySetupSerializer(serializers.Serializer):
+    company_name = serializers.CharField()
+    
+    def validate_company_name(self, value):
+        if Company.objects.filter(name__iexact=value).exists():
+            raise serializers.ValidationError("A company with this name already exists.")
+        return value
+
+    def create(self, validated_data):
+        from erp_core.models import Store, ERPUser
+        
+        user = self.context['request'].user
+        
+        # 1. We no longer generate a temporary password. The user will use their primary website password.
+        # temp_erp_pass = "Invenza" + "".join(random.choices(string.digits, k=4)) + "!"
+
+        # 2. Create the Company (Tenant)
+        company = Company.objects.create(
+            name=validated_data['company_name'],
+            slug=validated_data['company_name'].lower().replace(' ', '-'),
+            owner=user,
+            subscription_status='trial',
+            is_email_verified=True
+        )
+
+        # 3. Create a default Store (required for Electron ERP to boot)
+        default_store = Store.objects.create(
+            company=company,
+            name=validated_data['company_name'],
+            branch='Main Branch',
+        )
+
+        # 4. Create the Admin ERPUser (the owner's desktop ERP login)
+        name_parts = user.username.split(' ', 1)
+        erp_admin = ERPUser.objects.create(
+            company=company,
+            django_user=user,
+            name=user.username,
+            email=user.email,
+            username=user.username,
+            password=user.password,  # Unified password: use the same hashed password from Django User
+            role='super_admin', # Primary user is always super_admin
+            first_name=name_parts[0],
+            last_name=name_parts[1] if len(name_parts) > 1 else '',
+            is_active=True,
+            is_staff=True,
+        )
+        erp_admin.stores.set([default_store])
+
+        # 5. Initialize a trial subscription
+        try:
+            trial_plan = Plan.objects.get(name__icontains='Trial')
+            Subscription.objects.create(company=company, plan=trial_plan, is_active=True)
+        except Plan.DoesNotExist:
+            Subscription.objects.create(company=company, is_active=True)
+            
+        return {
             'company': company,
         }
+
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -206,17 +213,11 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
                 authenticated_user = auth_test
                 print(f"[AUTH_DEBUG] SUCCESS: Standard Login for {user.username}")
                 break
-                
-            # 2. Attempt Portal-specific ERP Password fallback (Owners)
-            company_owned = Company.objects.filter(owner=user).first()
-            if company_owned and password == company_owned.erp_password:
-                authenticated_user = user
-                print(f"[AUTH_DEBUG] SUCCESS: Portal Fallback Login for {user.username}")
-                break
-                
-            # 3. Attempt ERP-BCrypt fallback (Desktop-synced Staff)
+            
+            # 2. Attempt ERP-BCrypt fallback FIRST (Desktop-synced, most up-to-date password)
             from erp_core.models import ERPUser
             import bcrypt
+            from django.contrib.auth.hashers import check_password as django_check_password
             
             erp_profile = ERPUser.objects.filter(django_user=user, is_deleted=False).first()
             if erp_profile and erp_profile.password:
@@ -224,15 +225,49 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
                     if bcrypt.checkpw(password.encode('utf-8'), erp_profile.password.encode('utf-8')):
                         authenticated_user = user
                         print(f"[AUTH_DEBUG] SUCCESS: BCrypt Fallback Login for {user.username}")
+                        
+                        # Sync the new password to Django Auth so standard login works next time
+                        user.set_password(password)
+                        user.save()
+                        
+                        # If user is company owner, update erp_password so old password stops working
+                        company_owned = Company.objects.filter(owner=user).first()
+                        if company_owned:
+                            company_owned.erp_password = password
+                            company_owned.save()
+                            
                         break
+                    
+                    # Detect if old password was used
+                    elif erp_profile.previous_password:
+                        try:
+                            if bcrypt.checkpw(password.encode('utf-8'), erp_profile.previous_password.encode('utf-8')):
+                                raise serializers.ValidationError({"detail": "Your password has been changed recently. Please use your new password."})
+                        except ValueError:
+                            if django_check_password(password, erp_profile.previous_password) or password == erp_profile.previous_password:
+                                raise serializers.ValidationError({"detail": "Your password has been changed recently. Please use your new password."})
+                                
                 except ValueError:
-                    # Fallback for plain text passwords (e.g. users created directly in Django admin)
-                    if password == erp_profile.password:
+                    # Fallback for Django hashes or plain text passwords
+                    if django_check_password(password, erp_profile.password):
+                        authenticated_user = user
+                        print(f"[AUTH_DEBUG] SUCCESS: Django Hash Fallback Login for {user.username}")
+                        break
+                    elif password == erp_profile.password:
                         authenticated_user = user
                         print(f"[AUTH_DEBUG] SUCCESS: Plain text Fallback Login for {user.username}")
                         break
                 except Exception as e:
                     print(f"[AUTH_DEBUG] BCrypt error for {user.username}: {e}")
+                
+            # 3. Attempt Portal-specific ERP Password fallback (Owners without ERP profile yet)
+            # Only used when no ERPUser profile exists (before first sync from desktop)
+            if not erp_profile:
+                company_owned = Company.objects.filter(owner=user).first()
+                if company_owned and password == company_owned.erp_password:
+                    authenticated_user = user
+                    print(f"[AUTH_DEBUG] SUCCESS: Portal Fallback Login for {user.username}")
+                    break
 
         if not authenticated_user:
             print(f"[AUTH_DEBUG] Auth FAILED: No candidates matched password for {identifier}")

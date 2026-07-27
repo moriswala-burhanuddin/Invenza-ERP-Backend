@@ -122,6 +122,7 @@ class ERPUser(SyncableModel):
     email         = models.EmailField()
     username      = models.CharField(max_length=150)
     password      = models.CharField(max_length=255)  # Hashed — used for Electron local login
+    previous_password = models.CharField(max_length=255, null=True, blank=True) # Used to detect old password logins
     role          = models.CharField(max_length=50, choices=ROLE_CHOICES, default='staff')
 
     # Profile Fields (matching Electron SQLite schema exactly)

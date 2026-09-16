@@ -60,7 +60,12 @@ class SignupSerializer(serializers.Serializer):
             frontend_url = request.headers.get('Origin', 'http://localhost:5173') if request else 'http://localhost:5173'
             send_verification_email(user, frontend_url)
         except Exception as e:
+            import traceback
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"[EMAIL] Failed to send verification email: {e}\n{traceback.format_exc()}")
             print(f"[EMAIL] Failed to send verification email: {e}")
+            print(traceback.format_exc())
 
         return {
             'user': user,

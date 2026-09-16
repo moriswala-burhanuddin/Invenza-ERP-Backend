@@ -63,7 +63,7 @@ class Command(BaseCommand):
                     company.save(update_fields=['reminder_email_sent'])
                     self.stdout.write(self.style.SUCCESS(f"Sent subscription reminder email to {owner_email}"))
 
-                # Subscription Expired and email not sent yet
+                # Subscription Expired and email not sent yet (Note: handled by Stripe mostly, but good for manual checks)
                 elif days_left < 0 and not company.expiry_email_sent:
                     self.send_reminder_email(
                         subject="Your Invenza Subscription Has Expired",
@@ -74,6 +74,52 @@ class Command(BaseCommand):
                     company.expiry_email_sent = True
                     company.save(update_fields=['expiry_email_sent'])
                     self.stdout.write(self.style.SUCCESS(f"Sent subscription expiry email to {owner_email}"))
+
+            # --- PAST DUE (GRACE PERIOD) CHECK ---
+            elif company.subscription_status == 'past_due' or (hasattr(company, 'subscription') and company.subscription.status == 'PAST_DUE'):
+                sub = company.subscription
+                if sub and sub.current_period_start:
+                    days_past_due = (now - sub.current_period_start).days
+                    
+                    if days_past_due == 4 and sub.status != 'SUSPENDED':
+                        # Suspend after 4 days
+                        sub.status = 'SUSPENDED'
+                        sub.save()
+                        company.subscription_status = 'suspended'
+                        company.save(update_fields=['subscription_status'])
+                        
+                        self.send_reminder_email(
+                            subject="Account Suspended - Payment Overdue",
+                            template_name='billing/email/subscription_suspended.html',
+                            context={'company': company},
+                            recipient_list=[owner_email]
+                        )
+                        self.stdout.write(self.style.WARNING(f"Suspended subscription for {company.name} after 4 days grace period."))
+
+                    elif days_past_due >= 8:
+                        # Cancel after 8 days
+                        import stripe
+                        stripe.api_key = settings.STRIPE_SECRET_KEY
+                        if sub.stripe_subscription_id:
+                            try:
+                                stripe.Subscription.delete(sub.stripe_subscription_id)
+                                self.stdout.write(self.style.SUCCESS(f"Cancelled Stripe subscription for {company.name}"))
+                            except Exception as e:
+                                self.stdout.write(self.style.ERROR(f"Failed to cancel Stripe sub: {e}"))
+                                
+                        sub.status = 'CANCELLED'
+                        sub.is_active = False
+                        sub.save()
+                        company.subscription_status = 'expired'
+                        company.save(update_fields=['subscription_status'])
+                        
+                        self.send_reminder_email(
+                            subject="Subscription Cancelled - Invenza ERP",
+                            template_name='billing/email/subscription_terminated.html',
+                            context={'company': company},
+                            recipient_list=[owner_email]
+                        )
+                        self.stdout.write(self.style.ERROR(f"Cancelled subscription for {company.name} after 8 days past due."))
 
         self.stdout.write(self.style.SUCCESS('Successfully completed subscription check.'))
 

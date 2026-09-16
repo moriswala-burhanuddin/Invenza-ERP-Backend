@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Terminated</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F5F5F7;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
+        <!-- Header -->
+        <tr>
+            <td style="background: linear-gradient(135deg, #1D1D1F 0%, #3A3A3C 100%); padding: 40px 32px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Subscription Terminated</h1>
+                <p style="margin: 8px 0 0; color: rgba(255,255,255,0.7); font-size: 14px;">Your ERP access has been cancelled</p>
+            </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+            <td style="padding: 40px 32px;">
+                <p style="margin: 0 0 16px; color: #1D1D1F; font-size: 16px; line-height: 1.6;">
+                    Hello <strong>{{ company.name }}</strong>,
+                </p>
+                <p style="margin: 0 0 24px; color: #5F6368; font-size: 15px; line-height: 1.6;">
+                    Because your payment has been overdue for more than 8 days, your Invenza ERP subscription has been <strong>permanently cancelled</strong>.
+                </p>
+
+                <!-- Info Box -->
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                        <td style="background-color: #F0F4FF; border-left: 4px solid #0071E3; padding: 16px 20px; border-radius: 8px;">
+                            <p style="margin: 0; color: #1D1D1F; font-size: 14px; line-height: 1.5;">
+                                🛡️ <strong>Your data is safe.</strong> All your company data, transactions, and records are preserved. You can start a new subscription at any time to regain full access.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- CTA Button -->
+                <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin: 32px 0;">
+                    <tr>
+                        <td align="center">
+                            <a href="http://localhost:5173/pricing" style="display: inline-block; background-color: #0071E3; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 980px; font-size: 15px; font-weight: 600;">
+                                Start a New Subscription →
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+
+                <p style="margin: 0; color: #86868B; font-size: 13px; line-height: 1.5;">
+                    If you have any questions, please reach out to our support team.
+                </p>
+            </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+            <td style="background-color: #F5F5F7; padding: 24px 32px; text-align: center; border-top: 1px solid #E5E5EA;">
+                <p style="margin: 0; color: #86868B; font-size: 12px;">
+                    © Invenza ERP by Sysfotech IT Services. All rights reserved.
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

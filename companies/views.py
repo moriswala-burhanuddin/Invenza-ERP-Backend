@@ -63,17 +63,33 @@ class ERPCredentialsView(generics.RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         company = get_object_or_404(Company, owner=request.user)
         try:
-            plan_name = company.subscription.plan.name if company.subscription and company.subscription.plan else "Free Tier"
-        except:
+            subscription = company.subscription
+            plan_name = subscription.plan.name if subscription.plan else "Free Tier"
+            status = subscription.status
+            sub_status = status.lower() if status else company.subscription_status
+            
+            # Fetch the latest payment and its invoice
+            latest_invoice_url = None
+            if subscription.last_payment and hasattr(subscription.last_payment, 'invoice') and subscription.last_payment.invoice.pdf_path:
+                latest_invoice_url = request.build_absolute_uri(subscription.last_payment.invoice.pdf_path.url)
+            
+            expiry_date = subscription.expiry_date.isoformat() if subscription.expiry_date else None
+            
+        except Exception as e:
             plan_name = "Trial"
+            sub_status = company.subscription_status
+            latest_invoice_url = None
+            expiry_date = None
             
         return Response({
             "login_id": request.user.email,
             "company_id": company.id,
             "company_name": company.name,
-            "subscription_status": company.subscription_status,
+            "subscription_status": sub_status,
             "plan_name": plan_name,
-            "trial_days": company.trial_days_left
+            "trial_days": company.trial_days_left,
+            "expiry_date": expiry_date,
+            "latest_invoice_url": latest_invoice_url
         })
 
 class CheckEmailView(generics.GenericAPIView):

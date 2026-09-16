@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt & Invoice - Invenza ERP</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+            color: #1f2937;
+        }
+        .container {
+            max-width: 650px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 40px;
+            color: #ffffff;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+            margin: 0;
+        }
+        .logo span {
+            color: #3b82f6;
+        }
+        .invoice-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #94a3b8;
+            font-weight: 600;
+            text-align: right;
+            margin: 0;
+        }
+        .invoice-amount-large {
+            font-size: 48px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -1px;
+        }
+        .invoice-status {
+            display: inline-block;
+            background-color: #10b981;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 100px;
+            vertical-align: middle;
+            margin-left: 12px;
+        }
+        .content {
+            padding: 40px;
+        }
+        .info-grid {
+            display: table;
+            width: 100%;
+            margin-bottom: 40px;
+        }
+        .info-col {
+            display: table-cell;
+            width: 50%;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .info-value {
+            font-size: 15px;
+            color: #111827;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .table th {
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #6b7280;
+            font-weight: 600;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .table td {
+            padding: 16px 0;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 15px;
+            color: #111827;
+        }
+        .table .right {
+            text-align: right;
+        }
+        .totals {
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+        }
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 15px;
+            color: #4b5563;
+        }
+        .totals-row.grand-total {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            border-top: 2px solid #e5e7eb;
+            padding-top: 16px;
+            margin-top: 8px;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 30px 40px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #3b82f6;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        .btn-wrapper {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+                <tr>
+                    <td align="left">
+                        <h1 class="logo">INVENZA<span>.</span></h1>
+                    </td>
+                    <td align="right">
+                        <p class="invoice-title">Receipt</p>
+                    </td>
+                </tr>
+            </table>
+            <div>
+                <span class="invoice-amount-large">{{ currency|upper }} {{ amount }}</span>
+                <span class="invoice-status">Paid</span>
+            </div>
+            <p style="margin: 10px 0 0; color: #94a3b8; font-size: 15px;">
+                Thank you for your payment. Your subscription is active.
+            </p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="info-grid">
+                <div class="info-col">
+                    <div class="info-label">Billed To</div>
+                    <div class="info-value">
+                        <strong>{{ company_name }}</strong><br>
+                        {{ user_email }}
+                    </div>
+                </div>
+                <div class="info-col" style="text-align: right;">
+                    <div class="info-label">Invoice Details</div>
+                    <div class="info-value">
+                        Invoice No: <strong>{{ invoice_no }}</strong><br>
+                        Date: {{ current_date }}<br>
+                        Next Renewal: {{ expiry_date }}
+                    </div>
+                </div>
+            </div>
+            
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <strong>Invenza ERP - {{ plan_name }}</strong><br>
+                            <span style="font-size: 13px; color: #6b7280;">Annual Subscription</span>
+                        </td>
+                        <td class="right">{{ currency|upper }} {{ amount }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="totals">
+                <div class="totals-row">
+                    <span>Subtotal</span>
+                    <span>{{ currency|upper }} {{ amount }}</span>
+                </div>
+                <div class="totals-row">
+                    <span>Tax (0%)</span>
+                    <span>{{ currency|upper }} 0.00</span>
+                </div>
+                <div class="totals-row grand-total">
+                    <span>Total Paid</span>
+                    <span>{{ currency|upper }} {{ amount }}</span>
+                </div>
+            </div>
+
+            <div class="btn-wrapper">
+                <a href="{{ dashboard_url }}" class="btn">View Dashboard</a>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>
+                <strong>SYSFOTech</strong><br>
+                This receipt was sent securely by Invenza ERP payment systems.<br>
+                &copy; {{ current_year }} SYSFOTech. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

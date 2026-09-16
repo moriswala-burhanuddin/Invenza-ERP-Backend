@@ -30,7 +30,8 @@ class Company(models.Model):
         default='trial'
     )
     expiry_date = models.DateTimeField(null=True, blank=True)
-    razorpay_customer_id = models.CharField(max_length=100, null=True, blank=True)
+    razorpay_customer_id = models.CharField(max_length=100, null=True, blank=True, help_text="Legacy Razorpay customer ID")
+    stripe_customer_id = models.CharField(max_length=100, null=True, blank=True, help_text="Stripe customer ID (cus_xxx)")
     erp_password = models.CharField(max_length=128, null=True, blank=True, help_text="Temporary password for desktop ERP access")
 
     @property

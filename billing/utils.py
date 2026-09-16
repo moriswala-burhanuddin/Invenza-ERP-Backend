@@ -1,26 +1,17 @@
-import razorpay
-from django.conf import settings
-import os
-
-client = razorpay.Client(auth=(os.getenv('RAZORPAY_KEY_ID'), os.getenv('RAZORPAY_KEY_SECRET')))
-
-def create_razorpay_order(amount_in_paise, currency="INR"):
-    data = {
-        "amount": amount_in_paise,
-        "currency": currency,
-        "payment_capture": 1 # Auto capture
+PLAN_CONFIG = {
+    1: {
+        "name": "Starter",
+        "amount": 2900, #  or INR 2900 (depending on currency, assume cents/paise)
+        "duration": 30
+    },
+    2: {
+        "name": "Professional",
+        "amount": 5900,
+        "duration": 30
+    },
+    3: {
+        "name": "Enterprise",
+        "amount": 9900,
+        "duration": 30
     }
-    order = client.order.create(data=data)
-    return order
-
-def verify_payment_signature(razorpay_order_id, razorpay_payment_id, razorpay_signature):
-    params_dict = {
-        'razorpay_order_id': razorpay_order_id,
-        'razorpay_payment_id': razorpay_payment_id,
-        'razorpay_signature': razorpay_signature
-    }
-    try:
-        client.utility.verify_payment_signature(params_dict)
-        return True
-    except:
-        return False
+}

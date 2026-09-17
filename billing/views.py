@@ -205,6 +205,7 @@ class SubscriptionStatusView(APIView):
                 'auto_renew': subscription.auto_renew,
                 'is_active': subscription.is_subscription_active,
                 'stripe_subscription_id': subscription.stripe_subscription_id,
+                'trial_days': company.trial_days_left,
             },
             'payments': [{
                 'id': p.id,

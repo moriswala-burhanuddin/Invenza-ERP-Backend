@@ -243,3 +243,7 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 # Legacy Razorpay Config (kept for historical reference)
 RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_123')
 RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', 'secret_123')
+
+# GitHub API Token for Secure Downloads
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
+

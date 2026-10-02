@@ -242,6 +242,16 @@ class CustomerPortalView(APIView):
         try:
             session = stripe_service.create_customer_portal_session(company)
             return Response({'portal_url': session.url})
+        except stripe.error.InvalidRequestError as e:
+            if "No such customer" in str(e):
+                logger.warning(f"Customer {company.stripe_customer_id} not found in Stripe. Resetting billing info.")
+                company.stripe_customer_id = None
+                company.save()
+                if hasattr(company, 'subscription') and company.subscription:
+                    company.subscription.delete()
+                return Response({'error': 'Billing account no longer exists in Stripe. Please subscribe again.'}, status=status.HTTP_400_BAD_REQUEST)
+            logger.error(f"Stripe InvalidRequestError: {e}")
+            return Response({'error': 'Failed to create billing portal session'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             logger.error(f"Error creating customer portal session: {e}")
             return Response({'error': 'Failed to create billing portal session'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

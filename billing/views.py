@@ -182,6 +182,22 @@ class SubscriptionStatusView(APIView):
         except Subscription.DoesNotExist:
             return Response({'error': 'No subscription found'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Proactively sync from Stripe to ensure data is fresh (useful if webhooks are delayed or in local dev)
+        if subscription.stripe_subscription_id:
+            try:
+                stripe_sub_data = stripe_service.sync_subscription_from_stripe(subscription.stripe_subscription_id)
+                subscription.status = stripe_sub_data['status']
+                if stripe_sub_data.get('current_period_start'):
+                    subscription.current_period_start = stripe_sub_data['current_period_start']
+                if stripe_sub_data.get('current_period_end'):
+                    subscription.current_period_end = stripe_sub_data['current_period_end']
+                    subscription.expiry_date = stripe_sub_data['current_period_end']
+                subscription.cancel_at_period_end = stripe_sub_data.get('cancel_at_period_end', False)
+                subscription.auto_renew = not subscription.cancel_at_period_end
+                subscription.save()
+            except Exception as e:
+                logger.error(f"Error syncing subscription on status view: {e}")
+
         # Get payment history
         payments = Payment.objects.filter(
             company=company,
@@ -307,6 +323,13 @@ class CancelSubscriptionView(APIView):
                 ip_address=request.META.get('REMOTE_ADDR')
             )
 
+            # Send Email
+            webhook_view = StripeWebhookView()
+            if immediately:
+                webhook_view._send_subscription_cancelled_email(company)
+            else:
+                webhook_view._send_subscription_cancelled_period_end_email(company, subscription)
+
             return Response({
                 'message': 'Subscription cancelled' if immediately else 'Subscription will cancel at the end of the current billing period',
                 'cancel_at_period_end': subscription.cancel_at_period_end,
@@ -349,6 +372,9 @@ class ResumeSubscriptionView(APIView):
                 details={'stripe_subscription_id': subscription.stripe_subscription_id},
                 ip_address=request.META.get('REMOTE_ADDR')
             )
+
+            # Send Email
+            StripeWebhookView()._send_subscription_resumed_email(company, subscription)
 
             return Response({'message': 'Subscription resumed successfully'})
         except Exception as e:
@@ -722,6 +748,9 @@ class StripeWebhookView(APIView):
         if not was_cancelling and subscription.cancel_at_period_end:
             # They just set it to cancel at the end of the billing period
             self._send_subscription_cancelled_period_end_email(company, subscription)
+        elif was_cancelling and not subscription.cancel_at_period_end:
+            # They resumed the subscription
+            self._send_subscription_resumed_email(company, subscription)
 
         # Update plan if price changed
         if stripe_sub_data['price_id']:
@@ -893,6 +922,39 @@ class StripeWebhookView(APIView):
             email.send(fail_silently=True)
         except Exception as e:
             logger.error(f"Error sending end of period cancellation email: {e}")
+
+    def _send_subscription_resumed_email(self, company, subscription):
+        """Sends email when a subscription cancellation is revoked and it is set to auto-renew again."""
+        from django.core.mail import EmailMultiAlternatives
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+
+        try:
+            context = {
+                'company_name': company.name,
+                'plan_name': subscription.plan.name if subscription.plan else 'your plan',
+                'current_year': timezone.now().year,
+                'dashboard_url': f"{settings.FRONTEND_URL}/dashboard",
+            }
+
+            # We can use a simple text template if HTML doesn't exist yet, but let's try to load HTML
+            try:
+                html_content = render_to_string('billing/email/subscription_resumed.html', context)
+                text_content = strip_tags(html_content)
+            except Exception:
+                html_content = f"<h2>Subscription Resumed</h2><p>Hi {company.name},</p><p>Great news! Your subscription for {context['plan_name']} has been resumed and will auto-renew as normal.</p>"
+                text_content = f"Hi {company.name},\n\nGreat news! Your subscription for {context['plan_name']} has been resumed and will auto-renew as normal."
+
+            email = EmailMultiAlternatives(
+                subject='Subscription Resumed - Invenza ERP',
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[company.owner.email],
+            )
+            email.attach_alternative(html_content, "text/html")
+            email.send(fail_silently=True)
+        except Exception as e:
+            logger.error(f"Error sending subscription resumed email: {e}")
 
 
 # ─────────────────────────────────────────────

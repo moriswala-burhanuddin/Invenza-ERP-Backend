@@ -585,3 +585,53 @@ class SendSupplierEmailView(APIView):
                 return Response({"error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class IssueReportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        try:
+            # Find the company associated with the user
+            if hasattr(request.user, 'owned_companies') and request.user.owned_companies.exists():
+                company = request.user.owned_companies.first()
+            elif hasattr(request.user, 'erp_profile'):
+                company = request.user.erp_profile.company
+            else:
+                return Response({"error": "No company associated with user"}, status=400)
+            
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            issue_location = data.get('issue_location', 'Other')
+            description = data.get('description', '')
+
+            report = IssueReport.objects.create(
+                user=request.user,
+                email=request.user.email,
+                company_name=company.name,
+                issue_location=issue_location,
+                description=description,
+                status='Open'
+            )
+            
+            # Send email to info@sysfotech.uk
+            try:
+                subject = f"New Issue Report: {company.name} - {issue_location}"
+                message = f"User Email: {request.user.email}\nCompany Name: {company.name}\nIssue Location: {issue_location}\n\nDescription:\n{description}"
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    ['info@sysfotech.uk'],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                print("Failed to send issue report email:", str(e))
+
+            return Response({
+                "status": "success", 
+                "message": "Your issue has been submitted successfully. Our team will review it shortly."
+            }, status=201)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)

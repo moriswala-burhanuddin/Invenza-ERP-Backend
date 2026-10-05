@@ -15,7 +15,7 @@ from .models import (
     ItemKit, KitItem,
     SupplierCustomField, SupplierCustomFieldValue,
     SupplierDocument, SupplierTransaction,
-    Candidate, PerformanceReview, GiftCard,
+    Candidate, PerformanceReview, GiftCard, IssueReport,
 )
 
 
@@ -284,3 +284,10 @@ class GiftCardAdmin(admin.ModelAdmin):
     list_display = ('card_number', 'customer', 'value', 'balance', 'is_active', 'store')
     list_filter = ('store', 'is_active')
     search_fields = ('card_number',)
+
+@admin.register(IssueReport)
+class IssueReportAdmin(admin.ModelAdmin):
+    list_display = ('company_name', 'email', 'issue_location', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('email', 'company_name', 'description')
+    readonly_fields = ('user', 'email', 'company_name', 'issue_location', 'description', 'created_at', 'updated_at')

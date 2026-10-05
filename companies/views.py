@@ -70,18 +70,32 @@ class ERPCredentialsView(generics.RetrieveAPIView):
             status = subscription.status
             sub_status = status.lower() if status else company.subscription_status
             
+            # Sync company.subscription_status with the actual Subscription model
+            # This ensures the Company model reflects reality (e.g., after Stripe webhook updates)
+            expected_company_status = 'active' if sub_status in ('active', 'grace') else ('trial' if sub_status == 'trial' else 'expired')
+            if company.subscription_status != expected_company_status:
+                company.subscription_status = expected_company_status
+                company.save(update_fields=['subscription_status'])
+            
             # Fetch the latest payment and its invoice
             latest_invoice_url = None
             if subscription.last_payment and hasattr(subscription.last_payment, 'invoice') and subscription.last_payment.invoice.pdf_path:
                 latest_invoice_url = request.build_absolute_uri(subscription.last_payment.invoice.pdf_path.url)
             
-            expiry_date = subscription.expiry_date.isoformat() if subscription.expiry_date else None
+            expiry_date = subscription.expiry_date.isoformat() if subscription.expiry_date else (
+                subscription.current_period_end.isoformat() if subscription.current_period_end else None
+            )
+            cancel_at_period_end = subscription.cancel_at_period_end
             
         except Exception as e:
             plan_name = "Trial"
             sub_status = company.subscription_status
             latest_invoice_url = None
             expiry_date = None
+            cancel_at_period_end = False
+        
+        # Only return trial_days for trial users; for active subscribers it's irrelevant
+        trial_days = company.trial_days_left if sub_status == 'trial' else None
             
         return Response({
             "login_id": request.user.email,
@@ -89,8 +103,9 @@ class ERPCredentialsView(generics.RetrieveAPIView):
             "company_name": company.name,
             "subscription_status": sub_status,
             "plan_name": plan_name,
-            "trial_days": company.trial_days_left,
+            "trial_days": trial_days,
             "expiry_date": expiry_date,
+            "cancel_at_period_end": cancel_at_period_end,
             "latest_invoice_url": latest_invoice_url
         })
 

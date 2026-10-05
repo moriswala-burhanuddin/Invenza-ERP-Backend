@@ -15,6 +15,7 @@ class Company(models.Model):
     state = models.CharField(max_length=100, null=True, blank=True)
     pincode = models.CharField(max_length=20, null=True, blank=True)
     phone = models.CharField(max_length=20, null=True, blank=True)
+    country = models.CharField(max_length=2, null=True, blank=True, help_text="ISO 3166-1 alpha-2 country code (e.g. GB)")
     logo = models.ImageField(upload_to='company_logos/', null=True, blank=True)
     website = models.URLField(null=True, blank=True)
     base_currency = models.CharField(max_length=10, default='UGX', help_text="Default display currency")

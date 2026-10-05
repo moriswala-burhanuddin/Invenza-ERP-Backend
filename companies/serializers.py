@@ -25,7 +25,7 @@ class CompanySerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'slug', 'subscription_status', 'expiry_date',
             'legal_name', 'tax_id', 'address', 'city', 'state', 'pincode',
-            'phone', 'logo', 'website', 'is_ai_enabled', 'trial_days_left'
+            'phone', 'country', 'logo', 'website', 'is_ai_enabled', 'trial_days_left'
         )
         read_only_fields = ('slug', 'subscription_status', 'is_ai_enabled', 'trial_days_left')
 
@@ -321,6 +321,19 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
         
         if not company.is_email_verified and company.created_at >= feature_launch_date:
             raise serializers.ValidationError({"detail": "Please check your email and verify your account before logging in."})
+
+        # 4.6. Block expired trials / lapsed subscriptions with a clear, structured message.
+        # ONLY for the desktop ERP endpoint: expired users must still be able to sign in to the
+        # web portal (/api/login/) so they can subscribe or renew.
+        request = self.context.get('request')
+        match = getattr(request, 'resolver_match', None)
+        if match is not None and match.url_name == 'token_obtain_pair_compat':
+            from rest_framework.exceptions import PermissionDenied
+            from .access import get_access_block
+            access_block = get_access_block(company)
+            if access_block:
+                print(f"[AUTH_DEBUG] ERP login blocked for {authenticated_user.email}: {access_block['code']}")
+                raise PermissionDenied(detail=access_block)
 
         # 5. Generate SimpleJWT tokens manually
         refresh = RefreshToken.for_user(authenticated_user)

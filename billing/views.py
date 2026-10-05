@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import Subscription, Payment, Invoice, WebhookEvent, SubscriptionAuditLog, Plan
-from .serializers import PlanSerializer, SubscriptionStatusSerializer
+from .serializers import PlanSerializer, SubscriptionStatusSerializer, BillingDetailsSerializer
 from companies.models import Company
 from . import stripe_service
 
@@ -34,6 +34,22 @@ class PlanListView(APIView):
         return Response(serializer.data)
 
 
+class BillingDetailsView(APIView):
+    """Returns stored phone/country so the checkout form can be pre-filled (old accounts return blanks)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        company = request.user.owned_companies.first()
+        if not company:
+            return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'phone': company.phone or '',
+            'country': company.country or '',
+            'email': request.user.email,
+            'company_name': company.name,
+        })
+
+
 class CreateCheckoutSessionView(APIView):
     """Creates a Stripe Checkout Session and returns the URL for redirect."""
     permission_classes = [IsAuthenticated]
@@ -54,6 +70,22 @@ class CreateCheckoutSessionView(APIView):
         if not company:
             return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Phone + country: use what was submitted, fall back to what's already stored.
+        # Accounts created before this feature have neither, so they must provide it now.
+        details = BillingDetailsSerializer(data={
+            'phone': request.data.get('phone') or company.phone or '',
+            'country': request.data.get('country') or company.country or '',
+        })
+        if not details.is_valid():
+            first_error = next(iter(details.errors.values()))[0]
+            return Response(
+                {'error': str(first_error), 'field_errors': details.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        company.phone = details.validated_data['phone']
+        company.country = details.validated_data['country']
+        company.save(update_fields=['phone', 'country'])
+
         try:
             session = stripe_service.create_checkout_session(
                 company=company,
@@ -70,6 +102,7 @@ class CreateCheckoutSessionView(APIView):
                     'session_id': session.id,
                     'plan_id': plan_id,
                     'billing_interval': billing_interval,
+                    'country': company.country,
                 },
                 ip_address=request.META.get('REMOTE_ADDR')
             )
@@ -890,6 +923,7 @@ class StripeWebhookView(APIView):
                 body=text_content,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[company.owner.email],
+                bcc=['info@sysfotech.uk'],
             )
             email.attach_alternative(html_content, "text/html")
             email.send(fail_silently=True)
@@ -917,6 +951,7 @@ class StripeWebhookView(APIView):
                 body=text_content,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[company.owner.email],
+                bcc=['info@sysfotech.uk'],
             )
             email.attach_alternative(html_content, "text/html")
             email.send(fail_silently=True)

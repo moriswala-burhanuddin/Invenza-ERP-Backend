@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     PlanListView,
     CreateCheckoutSessionView,
+    BillingDetailsView,
     CheckoutSuccessView,
     SubscriptionStatusView,
     CustomerPortalView,
@@ -17,6 +18,7 @@ urlpatterns = [
     path('plans/', PlanListView.as_view(), name='plans_list'),
 
     # Stripe Checkout flow
+    path('billing-details/', BillingDetailsView.as_view(), name='billing_details'),
     path('create-checkout-session/', CreateCheckoutSessionView.as_view(), name='create_checkout_session'),
     path('checkout-success/', CheckoutSuccessView.as_view(), name='checkout_success'),
 

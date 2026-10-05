@@ -1098,3 +1098,34 @@ class CurrencyRate(SyncableModel):
 
     def __str__(self):
         return f"{self.currency_code} - {self.rate}"
+
+class IssueReport(models.Model):
+    LOCATION_CHOICES = [
+        ('Dashboard', 'Dashboard'),
+        ('Products', 'Products'),
+        ('Inventory', 'Inventory'),
+        ('Sales', 'Sales'),
+        ('Customers', 'Customers'),
+        ('Reports', 'Reports'),
+        ('Settings', 'Settings'),
+        ('Other', 'Other'),
+    ]
+
+    STATUS_CHOICES = [
+        ('Open', 'Open'),
+        ('In Progress', 'In Progress'),
+        ('Resolved', 'Resolved'),
+        ('Closed', 'Closed'),
+    ]
+
+    user = models.ForeignKey(DjangoUser, on_delete=models.CASCADE, related_name='issue_reports')
+    email = models.EmailField()
+    company_name = models.CharField(max_length=255)
+    issue_location = models.CharField(max_length=50, choices=LOCATION_CHOICES)
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Open')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.company_name} - {self.issue_location} ({self.status})"

@@ -22,29 +22,66 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 # Customer Management
 # ─────────────────────────────────────────────
 
+def _customer_contact_params(company):
+    """
+    Builds the Stripe Customer params for phone + country.
+    Only includes values that are actually set, so legacy companies with no
+    data never send empty strings to Stripe.
+    """
+    params = {}
+    if company.phone:
+        params['phone'] = company.phone
+    if company.country:
+        params['address'] = {'country': company.country}
+    return params
+
+
+def sync_customer_details(company):
+    """
+    Pushes the company's phone + country to its existing Stripe customer.
+    Returns True if an update was sent. Never raises: a failure here must not
+    block checkout.
+    """
+    params = _customer_contact_params(company)
+    if not company.stripe_customer_id or not params:
+        return False
+    try:
+        stripe.Customer.modify(company.stripe_customer_id, **params)
+        return True
+    except Exception as e:
+        logger.warning(f"Could not update Stripe customer {company.stripe_customer_id} contact details: {e}")
+        return False
+
+
 def get_or_create_stripe_customer(company, user):
     """
     Returns a Stripe Customer ID. Creates one if it doesn't exist.
     Stores the ID on both the Company and Subscription models.
+    Phone + country are sent to Stripe (also for customers created before this existed).
     """
     # Check if company already has a Stripe customer ID
     if company.stripe_customer_id:
         try:
             customer = stripe.Customer.retrieve(company.stripe_customer_id)
             if not getattr(customer, 'deleted', False):
+                sync_customer_details(company)
                 return company.stripe_customer_id
         except stripe.error.InvalidRequestError:
             logger.warning(f"Stripe customer {company.stripe_customer_id} not found, creating new one.")
 
     # Create new Stripe customer
+    metadata = {
+        'company_id': str(company.id),
+        'company_name': company.name,
+        'user_id': str(user.id),
+    }
+    if company.country:
+        metadata['country'] = company.country
     customer = stripe.Customer.create(
         email=user.email,
         name=company.name,
-        metadata={
-            'company_id': str(company.id),
-            'company_name': company.name,
-            'user_id': str(user.id),
-        }
+        metadata=metadata,
+        **_customer_contact_params(company),
     )
 
     # Save to company
@@ -100,6 +137,7 @@ def create_checkout_session(company, user, plan, billing_interval='month'):
             'company_id': str(company.id),
             'plan_id': str(plan.id),
             'billing_interval': billing_interval,
+            **({'country': company.country} if company.country else {}),
         },
         'subscription_data': {
             'metadata': {
